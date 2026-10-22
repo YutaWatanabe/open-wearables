@@ -113,17 +113,14 @@ class TestProviderSettingsServiceGetAllProviders:
 
     def test_get_all_providers_credentials_configured_when_set(self, db: Session) -> None:
         """Should report credentials as configured when client ID and secret are set."""
-        # Arrange
         service = ProviderSettingsService()
 
-        # Act
         with (
             patch.object(settings, "oura_client_id", "client-id"),
             patch.object(settings, "oura_client_secret", SecretStr("client-secret")),
         ):
             providers = service.get_all_providers(db)
 
-        # Assert
         oura = next(p for p in providers if p.provider == "oura")
         assert oura.credentials_configured is True
 
@@ -135,43 +132,34 @@ class TestProviderSettingsServiceGetAllProviders:
         self, db: Session, client_id: str | None, client_secret: SecretStr | None
     ) -> None:
         """Should report credentials as missing when client ID or secret is unset."""
-        # Arrange
         service = ProviderSettingsService()
 
-        # Act
         with (
             patch.object(settings, "oura_client_id", client_id),
             patch.object(settings, "oura_client_secret", client_secret),
         ):
             providers = service.get_all_providers(db)
 
-        # Assert
         oura = next(p for p in providers if p.provider == "oura")
         assert oura.credentials_configured is False
 
     def test_get_all_providers_sdk_providers_need_no_credentials(self, db: Session) -> None:
         """Should treat SDK-only providers as configured."""
-        # Arrange
         service = ProviderSettingsService()
 
-        # Act
         providers = service.get_all_providers(db)
 
-        # Assert
         for provider in providers:
             if not provider.has_cloud_api:
                 assert provider.credentials_configured is True
 
     def test_update_provider_setting_includes_credentials_configured(self, db: Session) -> None:
         """Should return credentials_configured from the update endpoint too."""
-        # Arrange
         service = ProviderSettingsService()
 
-        # Act
         with patch.object(settings, "oura_client_id", None):
             result = service.update_provider_setting(db, "oura", ProviderSettingUpdate(is_enabled=True))
 
-        # Assert
         assert result.credentials_configured is False
 
 
