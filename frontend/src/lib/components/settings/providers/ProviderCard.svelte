@@ -20,7 +20,7 @@
 
 	const changed = $derived(enabled !== provider.is_enabled);
 	// Only worth a warning while users can see it on the pairing page.
-	const missingCredentials = $derived(enabled && !provider.credentials_configured);
+	const missingCredentials = $derived(enabled && provider.credentials_configured === false);
 </script>
 
 <li class="flex flex-col gap-3 rounded-lg border border-border p-4">
