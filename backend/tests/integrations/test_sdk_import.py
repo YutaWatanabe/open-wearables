@@ -57,6 +57,7 @@ class TestStatebellSDKImport:
                 "records": [
                     drink("first-drink", "2026-10-26T12:00:01.001Z", 150),
                     drink("second-drink", "2026-10-26T12:00:01.001Z", 250),
+                    {key: value for key, value in drink("", "2026-10-26T12:00:01.001Z", 999).items() if key != "id"},
                     drink("unsupported", "2026-10-26T12:00:02Z", 50) | {"type": "steps"},
                 ]
             },

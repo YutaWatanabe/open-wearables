@@ -312,7 +312,7 @@ class ImportService:
 
             series_type = _series_type_for_record(record_type, provider)
 
-            if not series_type:
+            if not series_type or (provider == "statebell" and not rjson.id):
                 continue
             value = self._normalize_unit(series_type, value, provider)
 
