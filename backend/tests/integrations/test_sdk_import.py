@@ -71,7 +71,7 @@ class TestStatebellSDKImport:
             db.query(DataPointSeries)
             .join(DataSource)
             .filter(DataSource.user_id == user.id, DataSource.provider == "statebell")
-            .order_by(DataPointSeries.recorded_at)
+            .order_by(DataPointSeries.recorded_at, DataPointSeries.external_id)
             .all()
         )
         assert [(sample.external_id, sample.value) for sample in samples] == [
@@ -91,6 +91,53 @@ class TestStatebellSDKImport:
             ),
         )
         assert {sample.external_id for sample in page.data} == {"first-drink", "second-drink"}
+
+    def test_manual_provider_does_not_import_meals_workouts_or_sleep(self, db: Session) -> None:
+        user = UserFactory()
+        service = ImportService(log=logging.getLogger("test"))
+        payload = {
+            "provider": "statebell",
+            "sdkVersion": "1.0.0",
+            "syncTimestamp": "2026-10-26T12:00:00Z",
+            "data": {
+                "records": [
+                    {
+                        "id": "meal-1",
+                        "type": "FOOD",
+                        "value": 1,
+                        "unit": None,
+                        "startDate": "2026-10-26T12:00:00Z",
+                        "endDate": "2026-10-26T12:00:00Z",
+                        "source": {"name": "StateBell"},
+                    }
+                ],
+                "workouts": [
+                    {
+                        "id": "workout-1",
+                        "type": "walking",
+                        "startDate": "2026-10-26T12:00:00Z",
+                        "endDate": "2026-10-26T12:30:00Z",
+                        "source": {"name": "StateBell"},
+                    }
+                ],
+                "sleep": [
+                    {
+                        "id": "sleep-1",
+                        "stage": "inBed",
+                        "startDate": "2026-10-26T01:00:00Z",
+                        "endDate": "2026-10-26T02:00:00Z",
+                        "source": {"name": "StateBell"},
+                    }
+                ],
+            },
+        }
+
+        result = service.load_data(db, payload, str(user.id))
+
+        assert result["meals_saved"] == 0
+        assert result["workouts_saved"] == 0
+        assert result["sleep_saved"] == 0
+        assert db.query(EventRecord).join(DataSource).filter(DataSource.user_id == user.id).count() == 0
 
 
 @pytest.fixture(autouse=True)

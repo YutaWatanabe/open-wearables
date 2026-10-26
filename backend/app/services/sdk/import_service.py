@@ -473,7 +473,11 @@ class ImportService:
         types: set[str] = set()
 
         # A nutrient record whose correlation isn't in this batch stays a loose sample.
-        correlation_records = [r for r in request.data.records if (r.type or "") in MEAL_CORRELATION_TYPES]
+        correlation_records = (
+            []
+            if request.provider == "statebell"
+            else [r for r in request.data.records if (r.type or "") in MEAL_CORRELATION_TYPES]
+        )
         meal_external_ids = {r.id for r in correlation_records if r.id}
         nutrient_records: dict[str, list[MetricRecord]] = {}
         records: list[MetricRecord] = []
@@ -501,7 +505,7 @@ class ImportService:
             meals_saved = self.event_record_service.upsert_meals(db_session, meal_bundles)
 
         # Process workouts in batch
-        workout_bundles = list(self._build_workout_bundles(request, user_id))
+        workout_bundles = [] if request.provider == "statebell" else list(self._build_workout_bundles(request, user_id))
         if workout_bundles:
             workout_records = [record for record, _, _ in workout_bundles]
             details_by_id = {detail.record_id: detail for _, detail, _ in workout_bundles}
@@ -543,7 +547,7 @@ class ImportService:
         db_session.commit()
 
         # Process sleep (count sleep segments from input)
-        if request.data.sleep:
+        if request.data.sleep and request.provider != "statebell":
             handle_sleep_data(db_session, request, user_id)
             sleep_saved = len(request.data.sleep)
 
