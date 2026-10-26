@@ -59,6 +59,15 @@ MMOL_L_TO_MG_DL = Decimal("18.0182")
 # Energy series stored in kcal.
 _KCAL_SERIES = frozenset({SeriesType.dietary_energy_consumed, SeriesType.dietary_energy_from_fat})
 
+
+def _series_type_for_record(record_type: str, provider: str) -> SeriesType | None:
+    # StateBell sends an existing SeriesType slug, rather than an Apple/Android SDK identifier.
+    # Keep the manual-entry contract narrow until each additional metric is reviewed.
+    if provider == "statebell":
+        return SeriesType.hydration if record_type == SeriesType.hydration.value else None
+    return get_series_type_from_metric_type(record_type)
+
+
 MEAL_CORRELATION_TYPES = frozenset({"HKCorrelationTypeIdentifierFood", "FOOD"})
 
 MEAL_NUTRIENT_SERIES_TYPES = frozenset(
@@ -301,7 +310,7 @@ class ImportService:
             value = Decimal(str(rjson.value))
             unit = (rjson.unit or "").strip().lower()
 
-            series_type = get_series_type_from_metric_type(record_type)
+            series_type = _series_type_for_record(record_type, provider)
 
             if not series_type:
                 continue
@@ -483,7 +492,7 @@ class ImportService:
         # Types this backend can't map (e.g. sent by a newer SDK) are skipped while
         # building samples; count them so the summary log shows what was dropped.
         unsupported_types = Counter(
-            rjson.type or "" for rjson in records if get_series_type_from_metric_type(rjson.type or "") is None
+            rjson.type or "" for rjson in records if _series_type_for_record(rjson.type or "", request.provider) is None
         )
 
         # Process meals in batch

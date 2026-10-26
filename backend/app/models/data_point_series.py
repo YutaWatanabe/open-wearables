@@ -1,5 +1,5 @@
-from uuid import UUID
 from datetime import datetime
+from uuid import UUID
 
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.orm import Mapped
@@ -24,7 +24,9 @@ class DataPointSeries(BaseDbModel):
             "data_source_id",
             "series_type_definition_id",
             "recorded_at",
+            "external_id",
             name="uq_data_point_series_source_type_time",
+            postgresql_nulls_not_distinct=True,
         ),
     )
 
@@ -35,4 +37,4 @@ class DataPointSeries(BaseDbModel):
     zone_offset: Mapped[str_10 | None]
     value: Mapped[numeric_10_3]
     series_type_definition_id: Mapped[FKSeriesTypeDefinition]
-    is_daily_total: Mapped[bool | None] # True = pre-aggregated daily total; False = granular intraday samples
+    is_daily_total: Mapped[bool | None]  # True = pre-aggregated daily total; False = granular intraday samples

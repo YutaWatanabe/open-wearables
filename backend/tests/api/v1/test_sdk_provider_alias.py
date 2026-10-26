@@ -59,6 +59,14 @@ class TestSDKProviderAlias:
         assert response.status_code == 202
         assert mock_celery_tasks.delay.call_args.kwargs["provider"] == "health_connect"
 
+    def test_statebell_is_accepted_as_sdk_provider(
+        self, client: TestClient, api_v1_prefix: str, mock_celery_tasks: MagicMock
+    ) -> None:
+        response = _post(client, api_v1_prefix, "statebell")
+
+        assert response.status_code == 202
+        assert mock_celery_tasks.delay.call_args.kwargs["provider"] == "statebell"
+
     def test_google_health_is_not_an_sdk_provider(self, client: TestClient, api_v1_prefix: str) -> None:
         """The cloud OAuth provider must not be reachable through the SDK upload endpoint."""
         response = _post(client, api_v1_prefix, "google_health")

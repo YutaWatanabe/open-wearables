@@ -7,6 +7,7 @@ SDK_PROVIDERS: frozenset[str] = frozenset(
         ProviderName.APPLE.value,
         ProviderName.SAMSUNG.value,
         ProviderName.HEALTH_CONNECT.value,
+        ProviderName.STATEBELL.value,
     }
 )
 

@@ -345,9 +345,9 @@ class DataPointSeriesRepository(
 
         # Dedup within the batch: PostgreSQL cannot upsert the same row twice in one
         # statement. Keep the last value for each conflicting key.
-        deduped: dict[tuple[UUID, int, datetime], DataPointSeriesRepository._StagingRow] = {}
+        deduped: dict[tuple[UUID, int, datetime, str | None], DataPointSeriesRepository._StagingRow] = {}
         for row in rows:
-            deduped[(row.data_source_id, row.series_type_definition_id, row.recorded_at)] = row
+            deduped[(row.data_source_id, row.series_type_definition_id, row.recorded_at, row.external_id)] = row
         return list(deduped.values()), owners
 
     def _insert_data_points(
@@ -390,7 +390,7 @@ class DataPointSeriesRepository(
                         INSERT INTO data_point_series ({self._COPY_COLUMNS_SQL})
                         SELECT {self._COPY_COLUMNS_SQL} FROM data_point_series_staging
                         ORDER BY data_source_id, series_type_definition_id, recorded_at
-                        ON CONFLICT (data_source_id, series_type_definition_id, recorded_at)
+                        ON CONFLICT (data_source_id, series_type_definition_id, recorded_at, external_id)
                         DO UPDATE SET
                             external_id = excluded.external_id,
                             value = excluded.value,
@@ -443,6 +443,7 @@ class DataPointSeriesRepository(
                         self.model.data_source_id == creation.data_source_id,
                         self.model.series_type_definition_id == creation.series_type_definition_id,
                         self.model.recorded_at == creation.recorded_at,
+                        self.model.external_id == creation.external_id,
                     )
                     .first()
                 )

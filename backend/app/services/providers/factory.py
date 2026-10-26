@@ -9,6 +9,7 @@ from app.services.providers.oura.strategy import OuraStrategy
 from app.services.providers.polar.strategy import PolarStrategy
 from app.services.providers.samsung.strategy import SamsungStrategy
 from app.services.providers.sensorbio.strategy import SensorBioStrategy
+from app.services.providers.statebell.strategy import StatebellStrategy
 from app.services.providers.strava.strategy import StravaStrategy
 from app.services.providers.suunto.strategy import SuuntoStrategy
 from app.services.providers.ultrahuman.strategy import UltrahumanStrategy
@@ -27,6 +28,8 @@ class ProviderFactory:
                 return SamsungStrategy()
             case ProviderName.HEALTH_CONNECT.value:
                 return HealthConnectStrategy()
+            case ProviderName.STATEBELL.value:
+                return StatebellStrategy()
             case ProviderName.GOOGLE_HEALTH.value:
                 return GoogleHealthStrategy()
             case ProviderName.GARMIN.value:

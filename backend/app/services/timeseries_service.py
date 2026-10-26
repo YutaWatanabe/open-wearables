@@ -60,6 +60,7 @@ def _trim_to_whole_buckets(
 
 def _to_sample(
     timestamp: datetime,
+    external_id: str | None,
     zone_offset: str | None,
     series_type_definition_id: int,
     value: Decimal,
@@ -78,6 +79,7 @@ def _to_sample(
         )
     return TimeSeriesSample(
         timestamp=timestamp,
+        external_id=external_id,
         zone_offset=zone_offset,
         type=series_type,
         value=float(value),
@@ -263,7 +265,7 @@ class TimeSeriesService(
         return _page(
             data=[
                 _to_sample(
-                    s.bucket, s.zone_offset, s.series_type_definition_id, s.value, s.is_daily_total, s.data_source
+                    s.bucket, None, s.zone_offset, s.series_type_definition_id, s.value, s.is_daily_total, s.data_source
                 )
                 for s in samples
             ],
@@ -325,6 +327,7 @@ class TimeSeriesService(
         data = [
             _to_sample(
                 sample.recorded_at,
+                sample.external_id,
                 sample.zone_offset,
                 sample.series_type_definition_id,
                 sample.value,

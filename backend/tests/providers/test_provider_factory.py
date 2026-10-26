@@ -14,7 +14,7 @@ import contextlib
 import pytest
 
 from app.constants.sdk_providers import SDK_PROVIDERS
-from app.schemas.enums import ProviderName
+from app.schemas.enums import ProviderName, SeriesType
 from app.services.providers.apple.strategy import AppleStrategy
 from app.services.providers.base_strategy import BaseProviderStrategy
 from app.services.providers.factory import ProviderFactory
@@ -22,6 +22,7 @@ from app.services.providers.garmin.strategy import GarminStrategy
 from app.services.providers.oura.strategy import OuraStrategy
 from app.services.providers.polar.strategy import PolarStrategy
 from app.services.providers.sensorbio.strategy import SensorBioStrategy
+from app.services.providers.statebell.strategy import StatebellStrategy
 from app.services.providers.suunto.strategy import SuuntoStrategy
 from app.services.providers.ultrahuman.strategy import UltrahumanStrategy
 
@@ -165,7 +166,7 @@ class TestProviderFactory:
 
     def test_sdk_providers_have_no_components(self, factory: ProviderFactory) -> None:
         """SDK-only providers are metadata; ingestion runs through app/services/sdk/."""
-        for name in ("apple", "samsung", "health_connect"):
+        for name in ("apple", "samsung", "health_connect", "statebell"):
             # Act
             strategy = factory.get_provider(name)
 
@@ -186,6 +187,14 @@ class TestProviderFactory:
 
         # Assert
         assert client_sdk == SDK_PROVIDERS
+
+    def test_statebell_supports_only_manual_hydration(self, factory: ProviderFactory) -> None:
+        strategy = factory.get_provider("statebell")
+
+        assert isinstance(strategy, StatebellStrategy)
+        assert strategy.display_name == "StateBell"
+        assert strategy.capabilities.client_sdk is True
+        assert strategy.coverage.timeseries == frozenset({SeriesType.hydration})
 
     def test_provider_polar_has_oauth(
         self,

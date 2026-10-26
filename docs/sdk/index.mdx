@@ -96,6 +96,32 @@ The SDK uses a secure token-based authentication flow that keeps your App creden
   **Never embed your `app_id` / `app_secret` in your mobile app.** Always generate access tokens on your backend and pass only the tokens to the mobile SDK.
 </Warning>
 
+## StateBell manual hydration records
+
+StateBell can send a drink recorded in its own UI through the SDK sync endpoint without writing to Apple Health. Its backend authenticates the person, resolves the Open Wearables user ID, and sends this payload with its API key; the key must stay on the backend.
+
+```json
+{
+  "provider": "statebell",
+  "sdkVersion": "1.0.0",
+  "syncTimestamp": "2026-10-26T12:00:00Z",
+  "data": {
+    "records": [{
+      "id": "5a16767f-8613-4e97-a807-54c81145de15",
+      "type": "hydration",
+      "value": 250,
+      "unit": "mL",
+      "startDate": "2026-10-26T12:00:01.001Z",
+      "endDate": "2026-10-26T12:00:01.001Z",
+      "zoneOffset": "+09:00",
+      "source": { "name": "StateBell", "appId": "com.statebell.app" }
+    }]
+  }
+}
+```
+
+Only the existing `hydration` series type is supported for this provider. Each drink needs a stable `id`. Replaying the same record with the same timestamp updates it, while two different IDs at the same timestamp remain separate samples. The endpoint's `202 Accepted` means the batch was queued. Read `GET /api/v1/users/{user_id}/timeseries` with `types=hydration` and `provider=statebell`, then match the raw sample's `external_id` to confirm persistence.
+
 ## Disconnecting
 
 In most SDKs `signOut()` only clears the credentials stored on the device. It makes no network call, so on its own the backend never learns the user left: the connection stays `active` behind a plausible `last_synced_at` and is indistinguishable from a healthy one. The native iOS SDK reports the disconnect itself from version 0.15.0; the other SDKs need the call below.

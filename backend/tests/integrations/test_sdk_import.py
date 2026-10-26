@@ -6,6 +6,7 @@ Tests the full import flow for Apple HealthKit data via SDK.
 
 import json
 import logging
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -16,11 +17,12 @@ from sqlalchemy.orm import Session
 
 from app.constants.series_types.sdk import get_series_type_from_metric_type
 from app.models import DataPointSeries, DataSource, EventRecord, MealDetails, WorkoutDetails
-from app.schemas.enums import SeriesType
-from app.schemas.model_crud.activities import EventRecordQueryParams
+from app.schemas.enums import Resolution, SeriesType
+from app.schemas.model_crud.activities import EventRecordQueryParams, TimeSeriesQueryParams
 from app.schemas.providers.mobile_sdk import SyncRequest as SDKSyncRequest
 from app.services.event_record_service import event_record_service
 from app.services.sdk.import_service import ImportService
+from app.services.timeseries_service import timeseries_service
 from tests.factories import UserFactory
 
 SDK_ENVELOPE: dict[str, str] = {
@@ -28,6 +30,66 @@ SDK_ENVELOPE: dict[str, str] = {
     "sdkVersion": "1.0.0",
     "syncTimestamp": "2025-04-10T12:00:00Z",
 }
+
+
+class TestStatebellSDKImport:
+    def test_manual_hydration_is_distinct_within_one_displayed_minute_and_idempotent(self, db: Session) -> None:
+        user = UserFactory()
+        service = ImportService(log=logging.getLogger("test"))
+
+        def drink(record_id: str, timestamp: str, amount: int) -> dict[str, Any]:
+            return {
+                "id": record_id,
+                "type": "hydration",
+                "unit": "mL",
+                "value": amount,
+                "startDate": timestamp,
+                "endDate": timestamp,
+                "zoneOffset": "+09:00",
+                "source": {"name": "StateBell", "appId": "com.statebell.app"},
+            }
+
+        payload = {
+            "provider": "statebell",
+            "sdkVersion": "1.0.0",
+            "syncTimestamp": "2026-10-26T12:00:00Z",
+            "data": {
+                "records": [
+                    drink("first-drink", "2026-10-26T12:00:01.001Z", 150),
+                    drink("second-drink", "2026-10-26T12:00:01.001Z", 250),
+                    drink("unsupported", "2026-10-26T12:00:02Z", 50) | {"type": "steps"},
+                ]
+            },
+        }
+
+        result = service.load_data(db, payload, str(user.id))
+        assert result["unsupported_types"] == {"steps": 1}
+        service.load_data(db, payload, str(user.id))
+
+        samples = (
+            db.query(DataPointSeries)
+            .join(DataSource)
+            .filter(DataSource.user_id == user.id, DataSource.provider == "statebell")
+            .order_by(DataPointSeries.recorded_at)
+            .all()
+        )
+        assert [(sample.external_id, sample.value) for sample in samples] == [
+            ("first-drink", Decimal("150")),
+            ("second-drink", Decimal("250")),
+        ]
+
+        page = timeseries_service.get_timeseries(
+            db,
+            user.id,
+            [SeriesType.hydration],
+            TimeSeriesQueryParams(
+                start_datetime=datetime(2026, 10, 26, 12, 0, tzinfo=timezone.utc),
+                end_datetime=datetime(2026, 10, 26, 12, 1, tzinfo=timezone.utc),
+                provider="statebell",
+                resolution=Resolution.RAW,
+            ),
+        )
+        assert {sample.external_id for sample in page.data} == {"first-drink", "second-drink"}
 
 
 @pytest.fixture(autouse=True)

@@ -10,6 +10,8 @@ from app.utils.dates import ZoneOffset
 
 class TimeSeriesSample(BaseModel):
     timestamp: datetime
+    # Present only for raw samples. Lets SDK clients confirm which queued record was stored.
+    external_id: str | None = None
     zone_offset: ZoneOffset = None
     type: SeriesType
     value: float | int
